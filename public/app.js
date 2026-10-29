@@ -15,6 +15,7 @@ const messageList = document.querySelector('#message-list');
 const emptyState = document.querySelector('#empty-state');
 const messageForm = document.querySelector('#message-form');
 const messageInput = document.querySelector('#message-input');
+const virtualKeyboard = document.querySelector('#virtual-keyboard');
 const sendButton = document.querySelector('#send-button');
 const connectionBanner = document.querySelector('#connection-banner');
 const typingIndicator = document.querySelector('#typing-indicator');
@@ -30,8 +31,41 @@ let avatarUrl = null;
 let typingTimer = null;
 let typing = false;
 let roomJoined = false;
+const virtualKeyboardQuery = window.matchMedia('(max-width: 760px) and (pointer: coarse)');
+let virtualKeyboardMode = false;
+let virtualKeyboardShifted = false;
+let virtualKeyboardSymbols = false;
 const messageIds = new Set();
 const stickers = ['👋', '😊', '😄', '🥰', '🤗', '😎', '🥳', '🫶', '🙌', '👏', '💚', '💙', '💜', '💛', '💖', '✨', '⭐', '🌟', '🌈', '☀️', '🌙', '🌸', '🌷', '🌻', '🍀', '🦋', '🐱', '🐶', '🐼', '🦊', '🐸', '🐰', '🐻', '🐧', '🦄', '🍓', '🍉', '🍰', '☕', '🎈', '🎉', '🎨', '🎵', '🧸', '🪴', '💌', '💫', '✅', '👍', '💐'];
+
+function renderVirtualKeyboard() {
+	virtualKeyboard.querySelectorAll('.virtual-key').forEach((key, index) => {
+		key.style.setProperty('--key-hue', `${(index * 37) % 360}deg`);
+	});
+	virtualKeyboard.querySelectorAll('[data-alpha]').forEach((key) => {
+		const value = virtualKeyboardSymbols ? key.dataset.symbol : key.dataset.alpha;
+		key.dataset.insert = virtualKeyboardSymbols || !virtualKeyboardShifted ? value : value.toUpperCase();
+		key.textContent = key.dataset.insert;
+	});
+	virtualKeyboard.querySelector('[data-action="shift"]').classList.toggle('is-active', virtualKeyboardShifted);
+	virtualKeyboard.querySelector('[data-action="symbols"]').setAttribute('aria-pressed', String(virtualKeyboardSymbols));
+}
+
+function updateVirtualKeyboardMode() {
+	virtualKeyboardMode = virtualKeyboardQuery.matches;
+	messageInput.readOnly = virtualKeyboardMode;
+	document.body.classList.toggle('virtual-keyboard-mode', virtualKeyboardMode);
+	if (virtualKeyboardMode) messageInput.blur();
+	virtualKeyboard.hidden = !virtualKeyboardMode || !roomJoined;
+}
+
+function focusMessageInput() {
+	if (!virtualKeyboardMode) messageInput.focus();
+}
+
+virtualKeyboardQuery.addEventListener('change', updateVirtualKeyboardMode);
+renderVirtualKeyboard();
+updateVirtualKeyboardMode();
 
 const sceneNames = ['Snowfall', 'Aurora', 'Cat Aurora', 'Fireflies', 'Moonlight', 'Planets', 'Starflight', 'Star Map', 'Meteor Shower', 'Star Letters'];
 const alphabetLetters = ['S', 'R', 'Q', 'P', 'O', 'N', 'M', 'L', 'K', 'J', 'I', 'H', 'G', 'F', 'E', 'D', 'B', 'A'];
@@ -970,6 +1004,7 @@ function setConnected(connected) {
 	messageInput.disabled = !connected;
 	sendButton.disabled = !connected;
 	stickerToggle.disabled = !connected;
+	virtualKeyboard.hidden = !connected || !virtualKeyboardMode;
 	if (!connected) {
 		cancelAnimationFrame(sceneFrame);
 		sceneFrame = 0;
@@ -980,7 +1015,7 @@ function setConnected(connected) {
 		sceneStartedAt = performance.now();
 		document.querySelector('.chat-layout').classList.add('joined');
 		drawScene(sceneStartedAt);
-		messageInput.focus();
+		focusMessageInput();
 	}
 }
 
@@ -1224,7 +1259,7 @@ for (const sticker of stickers) {
 		socket.emit('chat:send', { type: 'sticker', sticker });
 		stickerPicker.hidden = true;
 		stickerToggle.setAttribute('aria-expanded', 'false');
-		messageInput.focus();
+		focusMessageInput();
 	});
 	stickerGrid.append(button);
 }
@@ -1249,7 +1284,7 @@ joinForm.addEventListener('submit', (event) => {
 
 leaveButton.addEventListener('click', () => leaveRoom('Siz xonadan chiqdingiz. Tarix xonada odam bor ekan saqlanadi.'));
 brandButton.addEventListener('click', () => {
-	if (roomJoined) messageInput.focus();
+	if (roomJoined) focusMessageInput();
 	else usernameInput.focus();
 });
 
@@ -1294,7 +1329,7 @@ messageForm.addEventListener('submit', (event) => {
 	messageInput.value = '';
 	messageInput.style.height = 'auto';
 	showBanner('');
-	messageInput.focus();
+	focusMessageInput();
 });
 
 messageInput.addEventListener('input', () => {
@@ -1311,4 +1346,36 @@ messageInput.addEventListener('keydown', (event) => {
 		event.preventDefault();
 		messageForm.requestSubmit();
 	}
+});
+
+virtualKeyboard.addEventListener('click', (event) => {
+	const key = event.target.closest('button');
+	if (!key || messageInput.disabled) return;
+
+	if (key.dataset.action === 'shift') {
+		virtualKeyboardShifted = !virtualKeyboardShifted;
+		renderVirtualKeyboard();
+		return;
+	}
+	if (key.dataset.action === 'symbols') {
+		virtualKeyboardSymbols = !virtualKeyboardSymbols;
+		renderVirtualKeyboard();
+		return;
+	}
+	if (key.dataset.action === 'backspace') {
+		messageInput.value = Array.from(messageInput.value).slice(0, -1).join('');
+	} else if (key.dataset.action === 'enter') {
+		messageForm.requestSubmit();
+		return;
+	} else if (key.dataset.insert && Array.from(messageInput.value).length < 2000) {
+		messageInput.value += key.dataset.insert;
+		if (virtualKeyboardShifted && !virtualKeyboardSymbols) {
+			virtualKeyboardShifted = false;
+			renderVirtualKeyboard();
+		}
+	} else {
+		return;
+	}
+
+	messageInput.dispatchEvent(new Event('input', { bubbles: true }));
 });
