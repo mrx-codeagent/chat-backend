@@ -959,13 +959,7 @@ document.addEventListener('visibilitychange', () => {
 resizeSceneCanvas();
 
 function getBackendUrl() {
-	const backendUrl = new URL(window.location.href);
-	backendUrl.protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-	backendUrl.port = '3000';
-	backendUrl.pathname = '';
-	backendUrl.search = '';
-	backendUrl.hash = '';
-	return backendUrl.origin;
+	return window.location.origin;
 }
 
 function setConnected(connected) {
