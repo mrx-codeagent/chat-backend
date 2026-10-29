@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="uz">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="theme-color" content="#183c35">
+		<meta name="description" content="Tarix saqlamaydigan, jonli va vaqtinchalik chat.">
+		<title>Hush — jonli suhbat</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+		<link rel="stylesheet" href="./styles.css">
+		<script src="https://cdn.socket.io/4.8.1/socket.io.min.js" defer></script>
+		<script src="./app.js" defer></script>
+	</head>
+	<body>
+		<div class="page-wrap">
+			<header class="topbar">
+				<button id="brand-button" class="brand" type="button" aria-label="Hush chat boshqaruvi">
+					<span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+					<span class="brand-name">DAYLESS/MRX<span>.</span></span>
+				</button>
+				<div class="topbar-note"><span class="topbar-dot"></span> Faqat shu lahza uchun</div>
+			</header>
+
+			<main class="chat-layout">
+				<aside class="room-panel" aria-label="Foydalanuvchilar">
+					<div id="avatar-stack" class="avatar-stack" aria-label="Xonadagi foydalanuvchilar avatarlari"></div>
+					<div class="members-list-box" aria-label="Xonadagi ismlar">
+						<ul id="members-list" class="members-list" aria-label="Xonadagi foydalanuvchilar"></ul>
+					</div>
+				</aside>
+
+				<section class="conversation" aria-label="Jonli chat">
+					<header class="conversation-header">
+						<div class="conversation-heading">
+							<div class="channel-icon" aria-hidden="true">#</div>
+							<div><h2>shaxsiy malumotlar olinmaydi tarix saqlanmaydi</h2><p>Hamma uchun bitta xona</p></div>
+						</div>
+						<div class="conversation-tools"><button id="leave-button" class="leave-button" type="button" hidden>Chiqish</button><div class="live-pill"><span></span> LIVE</div></div>
+					</header>
+
+					<div id="connection-banner" class="connection-banner" role="status" hidden></div>
+
+					<div class="message-stage">
+						<canvas id="scene-canvas" class="aurora-layer" aria-hidden="true"></canvas>
+						<div id="message-list" class="message-list" aria-live="polite" aria-relevant="additions text">
+							<div id="empty-state" class="empty-state">
+								<div class="empty-symbol" aria-hidden="true"><span></span><span></span><span></span></div>
+								<div class="empty-eyebrow"><span></span> SUHBAT UCHUN JOY BOR</div>
+								<h3>Yaxshi suhbat<br>shu yerdan boshlanadi.</h3>
+								<p>Ismingizni yozib xonaga kiring.<br>Bu yerda faqat hozirgi on muhim.</p>
+								<div class="empty-hint"><span>01</span><span>Kirganingizdan so‘ng xabar yuboring</span><span>↘</span></div>
+							</div>
+							<div id="typing-indicator" class="typing-indicator" role="status" aria-live="polite" hidden><span id="typing-names"></span><span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+						</div>
+					</div>
+
+					<form id="message-form" class="composer" hidden>
+						<label class="visually-hidden" for="message-input">Xabaringiz</label>
+						<textarea id="message-input" rows="1" maxlength="2000" placeholder="Xabar yozing…" disabled></textarea>
+						<div id="sticker-picker" class="sticker-picker" hidden>
+							<div class="sticker-picker-heading"><span>Yoqimli stikerlar</span><button id="sticker-close" type="button" aria-label="Stiker panelini yopish">×</button></div>
+							<div id="sticker-grid" class="sticker-grid" role="listbox" aria-label="Stiker tanlang"></div>
+						</div>
+						<div class="composer-bottom"><span id="composer-hint">Faqat hozirgi suhbatda ko‘rinadi</span><div class="composer-actions"><button id="sticker-toggle" class="sticker-toggle" type="button" aria-label="Stikerlar" aria-expanded="false" disabled>✿</button><button id="send-button" class="send-button" type="submit" aria-label="Xabarni yuborish" disabled><span>Yuborish</span><span class="send-arrow" aria-hidden="true">↗</span></button></div></div>
+					</form>
+					<div class="conversation-footer"><span>HUSH <i>·</i> LIVE CHAT</span><span class="footer-lock"><span aria-hidden="true">◈</span> Xona bo‘shaganda tarix tozalanadi</span></div>
+				</section>
+			</main>
+			<footer class="page-footer"><span>SO‘ZLAR SHU YERDA QOLADI, BU YERDA EMAS.</span><span>SUHBAT QILING. QOLGANINI QO‘YIB YUBORING.</span></footer>
+		</div>
+		<input id="avatar-file" class="visually-hidden" type="file" accept="image/*" aria-label="Profil rasmini tanlang">
+		<div id="profile-prompt" class="profile-prompt" role="dialog" aria-modal="true" aria-labelledby="profile-prompt-title">
+			<form id="join-form" class="profile-prompt-card entry-card">
+				<div id="profile-preview" class="prompt-avatar" aria-hidden="true">✿</div>
+				<h2 id="profile-prompt-title">Chatga kirish</h2>
+				<label class="entry-label" for="username">Ismingiz</label>
+				<input id="username" name="username" type="text" maxlength="32" autocomplete="nickname" placeholder="Ismingizni kiriting" required>
+				<div class="entry-avatar-row"><span id="avatar-choice-label">Profil rasmi ixtiyoriy</span><button id="avatar-yes" class="prompt-button secondary" type="button">Rasm tanlash</button><button id="avatar-no" class="avatar-reset" type="button" hidden>Standart avatar</button></div>
+				<p id="join-error" class="form-error" role="alert" hidden></p>
+				<button class="prompt-button primary entry-submit" type="submit">Xonaga kirish</button>
+			</form>
+		</div>
+	</body>
+</html>

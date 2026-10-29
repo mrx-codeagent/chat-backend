@@ -1,0 +1,18 @@
+{
+  "name": "ephemeral-realtime-chat-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Realtime chat backend that does not persist messages",
+  "main": "chatbackend.js",
+  "scripts": {
+    "start": "node chatbackend.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}
